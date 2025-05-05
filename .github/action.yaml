@@ -19,7 +19,7 @@ jobs:
           base="main"
           body="This PR is created automatically, based on branch BRANCH_NAME in sre-hybris."         
 
-          if [ -z "${{ secrets.PAT_WORKFLOW }}" ]; then
+          if [ -z "$PAT_WORKFLOW" ]; then
             echo "Error: PAT_WORKFLOW secret is not set." >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
