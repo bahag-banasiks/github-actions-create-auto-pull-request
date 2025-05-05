@@ -26,19 +26,3 @@ jobs:
           body: |
             This PR is created automatically.
           base: main
-
-      - name: Add Label to PR
-        if: steps.create_pr.outputs.pull-request-number != ''
-        uses: actions-ecosystem/action-add-labels@v1
-        with:
-          github_token: ${{ secrets.PAT_WORKFLOW }}
-          labels: auto-label
-          issue_number: ${{ steps.create_pr.outputs.pull-request-number }}
-
-      - name: Enable Auto Merge
-        if: steps.create_pr.outputs.pull-request-url != ''
-        uses: peter-evans/enable-pull-request-automerge@v2
-        with:
-          token: ${{ secrets.PAT_WORKFLOW }}
-          pull-request-number: ${{ steps.create_pr.outputs.pull-request-number }}
-          merge-method: squash
