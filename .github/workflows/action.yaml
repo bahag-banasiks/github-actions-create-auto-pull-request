@@ -19,11 +19,6 @@ jobs:
           base="main"
           body="This PR is created automatically, based on branch BRANCH_NAME in sre-hybris."         
 
-          if [ -z "$PAT_WORKFLOW" ]; then
-            echo "Error: PAT_WORKFLOW secret is not set." >> $GITHUB_STEP_SUMMARY
-            exit 1
-          fi
-
           # Creating the Pull Request
           response=$(curl -X POST \
             -H "Authorization: Bearer ${{ secrets.PAT_WORKFLOW }}" \
