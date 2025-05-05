@@ -42,4 +42,3 @@ jobs:
           token: ${{ secrets.PAT_WORKFLOW }}
           pull-request-number: ${{ steps.cpr.outputs.pull-request-number }}
           merge-method: squash
->
