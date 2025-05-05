@@ -1,44 +1,68 @@
-name: Auto PR + Merge + Labels
+name: Auto Pull Request 
+description: "Create a labeled pull request & auto-merge it"
 
 on:
-  push:
-    branches:
-      - feature/*
+  workflow_dispatch: # Trigger manually
 
 jobs:
-  auto-pr:
+  create_pr:
     runs-on: ubuntu-latest
-
+    env:
+      REQUESTED_TAG_IS_THE_SAME_AS_TAG_IN_TEAM_VALUES_FILE: false
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
+      - name: Install jq
+        run: sudo apt-get install -y jq
 
-      - name: Create Pull Request
-        id: cpr
-        uses: peter-evans/create-pull-request@v5
-        with:
-          token: ${{ secrets.PAT_WORKFLOW }}
-          commit-message: "Auto PR: Update from feature branch"
-          branch: auto-pr-branch
-          title: "Automated Pull Request"
-          body: |
-            This PR was created automatically.
+      - name: Create PR
+        if: env.REQUESTED_TAG_IS_THE_SAME_AS_TAG_IN_TEAM_VALUES_FILE == 'false'
+        run: |
+          # Define Variables used for the Pull Request
+          title="Update hybris image for env ENV_ID and deploy to GKE ENV"
+          head="INFRASTRUCTURE_BRANCH_NAME"
+          base="main"
+          body="This PR is created automatically, based on branch BRANCH_NAME in sre-hybris."         
 
-      - name: Add Labels to PR
-        if: steps.cpr.outputs.pull-request-number != ''
-        uses: actions-ecosystem/action-add-labels@v1
-        with:
-          github_token: ${{ secrets.PAT_WORKFLOW }}
-          issue_number: ${{ steps.cpr.outputs.pull-request-number }}
-          labels: |
-            automerge
-            bot
-            needs-review
+          if [ -z "${{ secrets.PAT_WORKFLOW }}" ]; then
+            echo "Error: PAT_WORKFLOW secret is not set." >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
 
-      - name: Enable Auto Merge
-        if: steps.cpr.outputs.pull-request-url != ''
-        uses: peter-evans/enable-pull-request-automerge@v2
-        with:
-          token: ${{ secrets.PAT_WORKFLOW }}
-          pull-request-number: ${{ steps.cpr.outputs.pull-request-number }}
-          merge-method: squash
+          # Creating the Pull Request
+          response=$(curl -X POST \
+            -H "Authorization: Bearer ${{ secrets.PAT_WORKFLOW }}" \
+            -H "Accept: application/vnd.github+json" \
+            -d "{
+              \"title\": \"$title\",
+              \"head\": \"$head\",
+              \"base\": \"$base\",
+              \"body\": \"$body\"
+            }" \
+            "https://api.github.com/repos/bahag-banasiks/github-actions-create-auto-pull-request/pulls")
+
+          # Check if the Pull Request was created successfully
+          if [[ $response != *"html_url"* ]]; then
+            echo "Pull request creation failed. No changes were made to the head branch, or a similar PR exists." >> $GITHUB_STEP_SUMMARY
+            exit 0
+          fi
+
+          # Extract PR Number
+          PR_NUMBER=$(echo $response | jq '.number')
+
+          # Add label to the PR
+          curl -X POST \
+            -H "Authorization: Bearer ${{ secrets.PAT_WORKFLOW }}" \
+            -H "Accept: application/vnd.github+json" \
+            -d '{"labels": ["auto-label"]}' \
+            "https://api.github.com/repos/bahag-banasiks/github-actions-create-auto-pull-request/issues/$PR_NUMBER/labels"
+
+          # Verify Label
+          LABEL_CHECK=$(curl -s \
+            -H "Authorization: Bearer ${{ secrets.PAT_WORKFLOW }}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/bahag-banasiks/github-actions-create-auto-pull-request/issues/$PR_NUMBER/labels" | jq -r '.[].name')
+
+          if echo $LABEL_CHECK | grep -q "auto-label"; then
+            echo "Label 'auto-label' added to the PR." | tee -a $GITHUB_STEP_SUMMARY
+          else
+            echo "Adding label to the PR has failed.❌ Need to add the label manually!" | tee -a $GITHUB_STEP_SUMMARY
+          fi
