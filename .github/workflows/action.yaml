@@ -7,14 +7,11 @@ on:
 jobs:
   create_pr:
     runs-on: ubuntu-latest
-    env:
-      REQUESTED_TAG_IS_THE_SAME_AS_TAG_IN_TEAM_VALUES_FILE: false
     steps:
       - name: Install jq
         run: sudo apt-get install -y jq
 
       - name: Create PR
-        if: env.REQUESTED_TAG_IS_THE_SAME_AS_TAG_IN_TEAM_VALUES_FILE == 'false'
         run: |
           # Define Variables used for the Pull Request
           title="Update hybris image for env ENV_ID and deploy to GKE ENV"
@@ -22,7 +19,7 @@ jobs:
           base="main"
           body="This PR is created automatically, based on branch BRANCH_NAME in sre-hybris."         
 
-          if [ -z "${{ secrets.PAT_WORKFLOW }}" ]; then
+          if [ -z "$PAT_WORKFLOW" ]; then
             echo "Error: PAT_WORKFLOW secret is not set." >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
