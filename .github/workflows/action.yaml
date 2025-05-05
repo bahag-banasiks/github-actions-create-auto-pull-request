@@ -1,0 +1,45 @@
+name: Auto PR + Merge + Labels
+
+on:
+  push:
+    branches:
+      - feature/*
+
+jobs:
+  auto-pr:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Create Pull Request
+        id: cpr
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GH_PAT }}
+          commit-message: "Auto PR: Update from feature branch"
+          branch: auto-pr-branch
+          title: "Automated Pull Request"
+          body: |
+            This PR was created automatically.
+
+      - name: Add Labels to PR
+        if: steps.cpr.outputs.pull-request-number != ''
+        uses: actions-ecosystem/action-add-labels@v1
+        with:
+          github_token: ${{ secrets.GH_PAT }}
+          issue_number: ${{ steps.cpr.outputs.pull-request-number }}
+          labels: |
+            automerge
+            bot
+            needs-review
+
+      - name: Enable Auto Merge
+        if: steps.cpr.outputs.pull-request-url != ''
+        uses: peter-evans/enable-pull-request-automerge@v2
+        with:
+          token: ${{ secrets.GH_PAT }}
+          pull-request-number: ${{ steps.cpr.outputs.pull-request-number }}
+          merge-method: squash
+>
