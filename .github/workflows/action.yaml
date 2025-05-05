@@ -44,14 +44,8 @@ jobs:
           curl -X POST \
             -H "Authorization: Bearer ${{ secrets.PAT_WORKFLOW }}" \
             -H "Accept: application/vnd.github+json" \
+              https://api.github.com/repos/bahag-banasiks/github-actions-create-auto-pull-request/issues/$PR_NUMBER/labels
             -d '{"labels": ["auto-label"]}' \
-            "https://api.github.com/repos/bahag-banasiks/github-actions-create-auto-pull-request/issues/$PR_NUMBER/labels"
-
-          # Verify Label
-          LABEL_CHECK=$(curl -s \
-            -H "Authorization: Bearer ${{ secrets.PAT_WORKFLOW }}" \
-            -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/bahag-banasiks/github-actions-create-auto-pull-request/issues/$PR_NUMBER/labels" | jq -r '.[].name')
 
           if echo $LABEL_CHECK | grep -q "auto-label"; then
             echo "Label 'auto-label' added to the PR." | tee -a $GITHUB_STEP_SUMMARY
