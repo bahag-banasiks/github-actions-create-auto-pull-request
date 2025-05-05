@@ -3,10 +3,6 @@ description: "Create a labeled pull request & auto-merge it"
 
 on:
   workflow_dispatch: # Trigger manually
-  # Uncomment below if you want to trigger on branch pushes
-  # push:
-  #   branches:
-  #     - feature/*
 
 jobs:
   create_pr:
