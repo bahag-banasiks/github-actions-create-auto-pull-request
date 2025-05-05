@@ -2,7 +2,10 @@ name: Auto Pull Request
 description: "Create a labeled pull request & auto-merge it"
 
 on:
-  workflow_dispatch: # Trigger manually
+    workflow_dispatch: # Trigger manually
+    push:
+        branches:
+            - 'feature/**' # Trigger on push to branches matching the pattern
 
 jobs:
   create_pr:
