@@ -17,7 +17,7 @@ jobs:
         id: cpr
         uses: peter-evans/create-pull-request@v5
         with:
-          token: ${{ secrets.GH_PAT }}
+          token: ${{ secrets.PAT_WORKFLOW }}
           commit-message: "Auto PR: Update from feature branch"
           branch: auto-pr-branch
           title: "Automated Pull Request"
@@ -28,7 +28,7 @@ jobs:
         if: steps.cpr.outputs.pull-request-number != ''
         uses: actions-ecosystem/action-add-labels@v1
         with:
-          github_token: ${{ secrets.GH_PAT }}
+          github_token: ${{ secrets.PAT_WORKFLOW }}
           issue_number: ${{ steps.cpr.outputs.pull-request-number }}
           labels: |
             automerge
@@ -39,7 +39,7 @@ jobs:
         if: steps.cpr.outputs.pull-request-url != ''
         uses: peter-evans/enable-pull-request-automerge@v2
         with:
-          token: ${{ secrets.GH_PAT }}
+          token: ${{ secrets.PAT_WORKFLOW }}
           pull-request-number: ${{ steps.cpr.outputs.pull-request-number }}
           merge-method: squash
 >
