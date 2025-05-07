@@ -1,114 +1,99 @@
-name: Create Auto Pull Request
-description: Create a pull request automatically
+name: 'Create Auto Pull Request'
+description: 'Create a pull request automatically'
+inputs:
+  token:
+    description: 'The GitHub token to use'
+    required: true
+  title:
+    description: 'The title of the pull request'
+    required: true
+  body:
+    description: 'The body of the pull request'
+    required: true
+  head:
+    description: 'The branch to create the pull request from'
+    required: true
+  base:
+    description: 'The branch to create the pull request to'
+    required: true
+  repo:
+    description: 'The repository to create the pull request in'
+    required: true
+  labels:
+    description: 'The labels to add to the pull request'
+    required: false
+  working-directory:
+    description: 'The working directory to run the action in'
+    required: false
+    default: '.'
+outputs:
+  pull_request_url:
+    description: 'URL of the created pull request'
+    value: ${{ steps.create_pr.outputs.pull_request_url }}
+  pull_request_number:
+    description: 'Number of the created pull request'
+    value: ${{ steps.create_pr.outputs.pull_request_number }}
+  head_sha:
+    description: 'SHA of the head branch'
+    value: ${{ steps.create_pr.outputs.head_sha }}
+runs:
+  using: 'composite'
+  steps:
+    - name: Create PR
+      working-directory: ${{ inputs.working-directory }}
+      shell: bash
+      id: create_pr
+      run: |
+        response=$(curl -sw "\n%{http_code}" -X POST \
+          -H "Authorization: Bearer ${{ inputs.token }}" \
+          -H "Accept: application/vnd.github+json" \
+          -d "{
+            \"title\": \"${{ inputs.title }}\",
+            \"head\": \"${{ inputs.head }}\",
+            \"base\": \"${{ inputs.base }}\",
+            \"body\": \"${{ inputs.body }}\"
+          }" \
+          "https://api.github.com/repos/${{ inputs.repo }}/pulls")
+        
+        status_code=$(echo "$response" | tail -n1)
+        if [ "$status_code" -ne 201 ]; then
+          echo "Failed to create pull request" | tee -a $GITHUB_STEP_SUMMARY
+          echo "Status code: $status_code" | tee -a $GITHUB_STEP_SUMMARY
+          echo "$response" | sed '$d'
+          exit 1
+        fi
 
-on:
-  workflow_call: # Makes this workflow reusable by other workflows
-    inputs:
-      token:
-        description: 'The GitHub token to use'
-        required: true
-        type: string
-      title:
-        description: 'The title of the pull request'
-        required: true
-        type: string
-      body:
-        description: 'The body of the pull request'
-        required: true
-        type: string
-      head:
-        description: 'The branch to create the pull request from'
-        required: true
-        type: string
-      base:
-        description: 'The branch to create the pull request to'
-        required: true
-        type: string
-      repo:
-        description: 'The repository to create the pull request in'
-        required: true
-        type: string
-      labels:
-        description: 'The labels to add to the pull request'
-        required: false
-        type: string
-      working-directory:
-        description: 'The working directory to run the action in'
-        required: false
-        type: string
+        echo "Pull request created successfully"
+        body=$(echo "$response" | sed '$d')
+        pull_request_url=$(echo "$body" | jq -r '.html_url')
+        echo "pull_request_url=$pull_request_url" >> $GITHUB_OUTPUT
+        pull_request_number=$(echo "$body" | jq '.number')
+        echo "pull_request_number=$pull_request_number" >> $GITHUB_OUTPUT
+        head_sha=$(echo "$body" | jq -r '.head.sha')
+        echo "head_sha=$head_sha" >> $GITHUB_OUTPUT
 
-jobs:
-  create_pr:
-    runs-on: ubuntu-latest
-
-    outputs:
-      pull_request_url: ${{ steps.create_pr.outputs.pull_request_url }}
-      pull_request_number: ${{ steps.create_pr.outputs.pull_request_number }}
-      head_sha: ${{ steps.create_pr.outputs.head_sha }}
-
-    steps:
-      - name: Set git config
-        shell: bash
-        run: |
-          git config --global user.email "steffen.banasik@bahag.com"
-          git config --global user.name "bahag-banasiks"
-          echo ${{ inputs.repo }}
-      
-      - name: Create PR
-        working-directory: ${{ inputs.working-directory }}
-        shell: bash
-        id: create_pr
-        run: |
-          response=$(curl -sw "\n%{http_code}" -X POST \
-            -H "Authorization: Bearer ${{ inputs.token }}" \
-            -H "Accept: application/vnd.github+json" \
-            -d "{
-              \"title\": \"${{ inputs.title }}\",
-              \"head\": \"${{ inputs.head }}\",
-              \"base\": \"${{ inputs.base }}\",
-              \"body\": \"${{ inputs.body }}\"
-            }" \
-            "https://api.github.com/repos/${{ inputs.repo }}/pulls")
-          
-          status_code=$(echo "$response" | tail -n1)
-          if [ "$status_code" -ne 201 ]; then
-            echo "Failed to create pull request" | tee -a $GITHUB_STEP_SUMMARY
-            echo "Status code: $status_code" | tee -a $GITHUB_STEP_SUMMARY
-            echo "$response" | sed '$d'
-            exit 1
-          fi
-
-          echo "Pull request created successfully"
-          body=$(echo "$response" | sed '$d')
-          pull_request_url=$(echo "$body" | jq -r '.html_url')
-          echo "pull_request_url=$pull_request_url" | tee -a $GITHUB_OUTPUT
-          pull_request_number=$(echo "$body" | jq '.number')
-          echo "pull_request_number=$pull_request_number" | tee -a $GITHUB_OUTPUT
-          head_sha=$(echo "$body" | jq -r '.head.sha')
-          echo "head_sha=$head_sha" | tee -a $GITHUB_OUTPUT
-
-      - name: Add labels
-        if: ${{ inputs.labels != '' }}
-        working-directory: ${{ inputs.working-directory }}
-        shell: bash
-        run: |
-          pull_request_number=${{ steps.create_pr.outputs.pull_request_number }}
-          labels=$(echo "${{ inputs.labels }}" | sed 's/,/","/g')
-          response_label=$(curl -sw "\n%{http_code}" -X POST \
-            -H "Authorization: Bearer ${{ inputs.token }}" \
-            -H "Accept: application/vnd.github+json" \
-            -d "{
-              \"labels\": [\"$labels\"]
-            }" \
-            "https://api.github.com/repos/${{ inputs.repo }}/issues/$pull_request_number/labels")
-          
-          status_code_label=$(echo "$response_label" | tail -n1)
-          if [ "$status_code_label" -ne 200 ]; then
-            echo "Failed to add label to the pull request" | tee -a $GITHUB_STEP_SUMMARY
-            echo "Status code: $status_code_label" | tee -a $GITHUB_STEP_SUMMARY
-            exit 1
-          fi
-          
-          response_content=$(echo "$response_label" | sed '$d')
-          applied_label=$(echo "$response_content" | jq -r '[.[].name] | join(", ")')
-          echo "$applied_label label(s) added to the pull request successfully"
+    - name: Add labels
+      if: ${{ inputs.labels != '' }}
+      working-directory: ${{ inputs.working-directory }}
+      shell: bash
+      run: |
+        pull_request_number=${{ steps.create_pr.outputs.pull_request_number }}
+        labels=$(echo "${{ inputs.labels }}" | sed 's/,/","/g')
+        response_label=$(curl -sw "\n%{http_code}" -X POST \
+          -H "Authorization: Bearer ${{ inputs.token }}" \
+          -H "Accept: application/vnd.github+json" \
+          -d "{
+            \"labels\": [\"$labels\"]
+          }" \
+          "https://api.github.com/repos/${{ inputs.repo }}/issues/$pull_request_number/labels")
+        
+        status_code_label=$(echo "$response_label" | tail -n1)
+        if [ "$status_code_label" -ne 200 ]; then
+          echo "Failed to add label to the pull request" | tee -a $GITHUB_STEP_SUMMARY
+          echo "Status code: $status_code_label" | tee -a $GITHUB_STEP_SUMMARY
+          exit 1
+        fi
+        
+        response_content=$(echo "$response_label" | sed '$d')
+        applied_label=$(echo "$response_content" | jq -r '[.[].name] | join(", ")')
+        echo "$applied_label label(s) added to the pull request successfully"
