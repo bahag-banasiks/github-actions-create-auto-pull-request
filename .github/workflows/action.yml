@@ -50,8 +50,8 @@ jobs:
       - name: Set git config
         shell: bash
         run: |
-          git config --global user.email "junghoon.lee@bahag.com"
-          git config --global user.name "bahag-leej"
+          git config --global user.email "steffen.banasik@bahag.com"
+          git config --global user.name "bahag-banasiks"
           echo ${{ inputs.repo }}
       
       - name: Create PR
