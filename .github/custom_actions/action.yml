@@ -98,23 +98,23 @@ runs:
       applied_label=$(echo "$response_content" | jq -r '[.[].name] | join(", ")')
       echo "$applied_label label(s) added to the pull request successfully"
 
-  - name: Enable Auto-Merge
-    working-directory: ${{ inputs.working-directory }}
-    shell: bash
-    run: |
-      pull_request_number=${{ steps.create_pr.outputs.pull_request_number }}
-      merge_response=$(curl -X PUT \
-        -H "Authorization: Bearer ${{ inputs.token }}" \
-        -H "Accept: application/vnd.github+json" \
-        -d "{
-          \"merge_method\": \"squash\"
-        }" \
-        "https://api.github.com/repos/${{ inputs.repo }}/pulls/$pull_request_number/merge")
+- name: Enable Auto-Merge
+  working-directory: ${{ inputs.working-directory }}
+  shell: bash
+  run: |
+    pull_request_number=${{ steps.create_pr.outputs.pull_request_number }}
+    merge_response=$(curl -X PUT \
+      -H "Authorization: Bearer ${{ inputs.token }}" \
+      -H "Accept: application/vnd.github+json" \
+      -d "{
+        \"merge_method\": \"squash\"
+      }" \
+      "https://api.github.com/repos/${{ inputs.repo }}/pulls/$pull_request_number/merge")
 
-      if [[ ! $merge_response -eq 200 ]]; then
-        echo "Failed to enable auto-merge for the pull request" | tee -a $GITHUB_STEP_SUMMARY
-        echo "Response: $merge_response" | tee -a $GITHUB_STEP_SUMMARY
-        exit 1
-      fi
+    if [[ ! $merge_response -eq 200 ]]; then
+      echo "Failed to enable auto-merge for the pull request" | tee -a $GITHUB_STEP_SUMMARY
+      echo "Response: $merge_response" | tee -a $GITHUB_STEP_SUMMARY
+      exit 1
+    fi
 
-      echo "Auto-merge enabled for the pull request successfully"
+    echo "Auto-merge enabled for the pull request successfully"
