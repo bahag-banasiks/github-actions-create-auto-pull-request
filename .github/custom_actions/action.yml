@@ -98,3 +98,25 @@ runs:
         applied_label=$(echo "$response_content" | jq -r '[.[].name] | join(", ")')
         echo "$applied_label label(s) added to the pull request successfully"
 
+    - name: Merge Pull Request
+      if: ${{ inputs.auto-merge == 'true' }}
+      working-directory: ${{ inputs.working-directory }}
+      shell: bash
+      run: |
+        pull_request_number=${{ steps.create_pr.outputs.pull_request_number }}
+        response_merge=$(curl -sw "\n%{http_code}" -X PUT \
+          -H "Authorization: Bearer ${{ inputs.token }}" \
+          -H "Accept: application/vnd.github+json" \
+          -d "{
+          \"merge_method\": \"merge\"
+          }" \
+          "https://api.github.com/repos/${{ inputs.repo }}/pulls/$pull_request_number/merge")
+        
+        status_code_merge=$(echo "$response_merge" | tail -n1)
+        if [ "$status_code_merge" -ne 200 ]; then
+          echo "Failed to merge the pull request" | tee -a $GITHUB_STEP_SUMMARY
+          echo "Status code: $status_code_merge" | tee -a $GITHUB_STEP_SUMMARY
+          exit 1
+        fi
+
+        echo "Pull request merged successfully" | tee -a $GITHUB_STEP_SUMMARY
