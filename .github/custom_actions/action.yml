@@ -98,6 +98,13 @@ runs:
         applied_label=$(echo "$response_content" | jq -r '[.[].name] | join(", ")')
         echo "$applied_label label(s) added to the pull request successfully"
 
+    - name: Sleep for 5 seconds
+      working-directory: ${{ inputs.working-directory }}
+      shell: bash
+      run: |
+        echo "Waiting for 5 seconds before attempting to merge the pull request..."
+        sleep 5
+
     - name: Merge Pull Request
       if: ${{ inputs.auto-merge == 'true' }}
       working-directory: ${{ inputs.working-directory }}
